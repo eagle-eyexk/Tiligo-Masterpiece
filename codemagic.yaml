@@ -68,7 +68,7 @@ workflows:
           }
           EOF
       
-      - name: 🔧 Pre-create iOS folder with correct Podfile
+      - name: 🔧 Create iOS folder with correct Podfile
         script: |
           echo "🔧 Creating iOS folder with correct deployment target..."
           
@@ -81,10 +81,12 @@ workflows:
           # Create ios folder structure
           mkdir -p ios/App
           
-          # Create Podfile with correct deployment target
+          # Create Podfile with correct deployment target and project path
           cat > ios/App/Podfile << 'EOF'
           platform :ios, '14.0'
           install! 'cocoapods', :deterministic_uuids => false
+          
+          project 'App.xcodeproj'
           
           target 'App' do
             capacitor_pods = true
@@ -96,28 +98,42 @@ workflows:
           
           echo "✅ Podfile created with iOS 14.0 deployment target"
       
-      - name: 🔄 Manually add iOS platform (skip pod install)
+      - name: 🔄 Manually add iOS platform
         script: |
           echo "📱 Manually adding Capacitor iOS platform..."
           
-          # Run cap add but skip pod install
+          # Run cap add with no sync to avoid automatic pod install
           npx cap add ios --no-sync || echo "iOS add completed with warnings"
           
           # Fix the project deployment target
           cd ios/App
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
           sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
+          
+          # Ensure the project file exists
+          ls -la App.xcodeproj/ || echo "Project file check"
+          
           cd ../..
           
           echo "✅ iOS platform added with fixed deployment target"
       
-      - name: 🔄 Sync Capacitor and install pods
+      - name: 🔄 Sync Capacitor
         script: |
-          echo "🔄 Syncing Capacitor..."
-          npx cap sync ios
-          
+          echo "🔄 Syncing Capacitor (without pod install)..."
+          npx cap sync ios --no-build
+      
+      - name: 📦 Install CocoaPods dependencies
+        script: |
           echo "📦 Installing CocoaPods dependencies..."
-          cd ios/App && pod install --repo-update && cd ../..
+          cd ios/App
+          
+          # Verify Podfile exists
+          cat Podfile
+          
+          # Run pod install
+          pod install --repo-update
+          
+          cd ../..
       
       - name: 🔐 Install certificate from signing folder
         script: |
