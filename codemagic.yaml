@@ -22,23 +22,21 @@ workflows:
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install dependencies (yarn)
+      - name: 📦 Install dependencies (npm)
         script: |
-          # Enable corepack for yarn (modern yarn)
-          corepack enable
-          # Install dependencies using yarn
-          yarn install --frozen-lockfile
+          # Use npm with the pnpm-lock.yaml
+          npm install --no-package-lock
       
       - name: 🏗️ Build web app
         script: |
-          # Build the project using yarn
-          yarn run build
+          # Build the project using npm
+          npm run build
       
       - name: 🎨 Generate app icons (optional)
         script: |
           if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
             echo "🎨 Generating iOS app icons..."
-            yarn add -D @capacitor/assets
+            npm install -D @capacitor/assets
             npx capacitor-assets generate --ios
           else
             echo "ℹ️ No resources/icon.png found, using default icons"
