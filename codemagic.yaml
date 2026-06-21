@@ -22,23 +22,23 @@ workflows:
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install dependencies
+      - name: 📦 Install dependencies (yarn)
         script: |
-          # Install pnpm globally
-          npm install -g pnpm
-          # Install dependencies using pnpm
-          pnpm install --frozen-lockfile
+          # Enable corepack for yarn (modern yarn)
+          corepack enable
+          # Install dependencies using yarn
+          yarn install --frozen-lockfile
       
       - name: 🏗️ Build web app
         script: |
-          # Build the project - check package.json for the actual build script
-          pnpm run build || npm run build
+          # Build the project using yarn
+          yarn run build
       
       - name: 🎨 Generate app icons (optional)
         script: |
           if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
             echo "🎨 Generating iOS app icons..."
-            npm install -D @capacitor/assets
+            yarn add -D @capacitor/assets
             npx capacitor-assets generate --ios
           else
             echo "ℹ️ No resources/icon.png found, using default icons"
@@ -46,12 +46,10 @@ workflows:
       
       - name: 🔄 Sync Capacitor and pods
         script: |
-          # Check if Capacitor iOS exists, add if not
           if [ ! -d "ios" ]; then
             echo "📱 Adding Capacitor iOS platform..."
             npx cap add ios
           fi
-          # Sync and install pods
           npx cap sync ios
           cd ios/App && pod install --repo-update && cd ../..
       
@@ -59,12 +57,10 @@ workflows:
         script: |
           echo "🔐 Installing certificates from signing/ folder..."
           
-          # Create keychain
           security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
           
-          # Import all p12 files
           for p12 in signing/*.p12; do
             if [ -f "$p12" ]; then
               echo "📂 Importing: $p12"
@@ -72,7 +68,6 @@ workflows:
             fi
           done
           
-          # Import all pem files
           for pem in signing/*.pem; do
             if [ -f "$pem" ]; then
               echo "📂 Importing: $pem"
@@ -91,7 +86,6 @@ workflows:
           
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
           
-          # Copy all mobileprovision files
           for profile in signing/*.mobileprovision; do
             if [ -f "$profile" ]; then
               echo "📂 Installing: $profile"
@@ -116,15 +110,12 @@ workflows:
         script: |
           cd ios/App
           
-          # Auto-increment build number
           BUILD=$(( $(date +%s) - 1700000000 ))
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist 2>/dev/null || true
           
-          # Use keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
           
-          # Find the actual profile name from the installed profiles
           PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles/ -name "*.mobileprovision" -exec /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat {} 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) \; 2>/dev/null | head -1)
           
           if [ -z "$PROFILE_NAME" ]; then
@@ -134,7 +125,6 @@ workflows:
           
           echo "🔐 Using provisioning profile: $PROFILE_NAME"
           
-          # Build archive with manual signing
           xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
             -archivePath /Users/builder/build/App.xcarchive \
             DEVELOPMENT_TEAM=$TEAM_ID \
@@ -145,7 +135,6 @@ workflows:
           
           test -d /Users/builder/build/App.xcarchive || exit 1
           
-          # Export IPA
           cat > /Users/builder/ExportOptions.plist << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
