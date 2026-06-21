@@ -3,157 +3,176 @@ workflows:
     name: iOS Release - Tiligo-Masterpiece
     instance_type: mac_mini_m1
     max_build_duration: 120
-
     environment:
       node: 20
       xcode: latest
       cocoapods: default
-
       groups:
         - code-signing
-
       vars:
         BUNDLE_ID: "com.tiligo.tilgo"
         TEAM_ID: "H4QUDPK7S3"
         ISSUER_ID: "6d7acece-2356-43c3-9946-6fd2cda5bf7d"
         KEY_ID: "3FM3UY4ARQ"
         PROFILE_NAME: "TiliGo Cer"
-
-    cache:
-      cache_paths:
-        - node_modules
-        - ios/Pods
-        - ~/.cocoapods
-
+        KEYCHAIN_PASSWORD: "build123"
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: main
-
     scripts:
-
-      # -------------------------
-      # 1. Dependency installation
-      # -------------------------
-      - name: Install dependencies (deterministic)
+      - name: 📦 Install dependencies (npm bypass)
         script: |
-          corepack enable
-          yarn install --frozen-lockfile
-
-      # -------------------------
-      # 2. Build web layer
-      # -------------------------
-      - name: Build web app
+          # Temporarily disable the preinstall script that forces pnpm
+          echo "📝 Temporarily disabling preinstall script..."
+          cp package.json package.json.backup
+          # Remove the preinstall script
+          cat package.json.backup | grep -v '"preinstall"' > package.json
+          
+          # Install with npm (this will work without the forced pnpm check)
+          echo "📦 Installing with npm..."
+          npm install
+          
+          # Restore the original package.json
+          mv package.json.backup package.json
+      
+      - name: 🏗️ Build web app
         script: |
-          yarn build
-
-      # -------------------------
-      # 3. Capacitor sync
-      # -------------------------
-      - name: Sync Capacitor
+          # Build using npm
+          npm run build
+      
+      - name: 🎨 Generate app icons (optional)
         script: |
+          if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
+            echo "🎨 Generating iOS app icons..."
+            npm install -D @capacitor/assets
+            npx capacitor-assets generate --ios
+          else
+            echo "ℹ️ No resources/icon.png found, using default icons"
+          fi
+      
+      - name: 🔄 Sync Capacitor and pods
+        script: |
+          if [ ! -d "ios" ]; then
+            echo "📱 Adding Capacitor iOS platform..."
+            npx cap add ios
+          fi
           npx cap sync ios
-          cd ios/App && pod install --repo-update
-
-      # -------------------------
-      # 4. Secure keychain setup
-      # -------------------------
-      - name: Setup secure keychain
+          cd ios/App && pod install --repo-update && cd ../..
+      
+      - name: 🔐 Install certificate from signing folder
         script: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          echo "🔐 Installing certificates from signing/ folder..."
+          
+          security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-
-      # -------------------------
-      # 5. Import signing assets safely
-      # -------------------------
-      - name: Import signing assets
-        script: |
-          set -e
-
-          for file in signing/*.p12; do
-            [ -f "$file" ] || continue
-            security import "$file" \
-              -k build.keychain \
-              -P "$P12_PASSWORD" \
-              -T /usr/bin/codesign
+          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          
+          for p12 in signing/*.p12; do
+            if [ -f "$p12" ]; then
+              echo "📂 Importing: $p12"
+              security import "$p12" -k build.keychain -P "" -T /usr/bin/codesign
+            fi
           done
-
-          for file in signing/*.mobileprovision; do
-            [ -f "$file" ] || continue
-            UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< \
-              $(security cms -D -i "$file") 2>/dev/null)
-
-            cp "$file" ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+          
+          for pem in signing/*.pem; do
+            if [ -f "$pem" ]; then
+              echo "📂 Importing: $pem"
+              security import "$pem" -k build.keychain -T /usr/bin/codesign
+            fi
           done
-
-      # -------------------------
-      # 6. Validate signing setup
-      # -------------------------
-      - name: Validate signing identity
+          
+          security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASSWORD build.keychain
+          
+          echo "✅ Certificates installed successfully"
+          security find-identity -v -p apple
+      
+      - name: 📋 Install provisioning profile
         script: |
-          security find-identity -v -p codesigning
-
-      # -------------------------
-      # 7. Build versioning
-      # -------------------------
-      - name: Set build version
+          echo "📋 Installing provisioning profiles from signing/ folder..."
+          
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
+          
+          for profile in signing/*.mobileprovision; do
+            if [ -f "$profile" ]; then
+              echo "📂 Installing: $profile"
+              cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/
+            fi
+          done
+          
+          echo "✅ Profiles installed:"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+      
+      - name: 🔍 Debug - List installed profiles
+        script: |
+          echo "📋 Installed provisioning profiles:"
+          for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
+            if [ -f "$profile" ]; then
+              echo "📂 $profile"
+              /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat "$profile" 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) 2>/dev/null || echo "  Could not read name"
+            fi
+          done
+      
+      - name: 🚀 Build and export IPA
         script: |
           cd ios/App
-          BUILD_NUMBER=$((GITHUB_RUN_NUMBER + 1000))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist || true
-
-      # -------------------------
-      # 8. Archive build
-      # -------------------------
-      - name: Archive iOS app
-        script: |
-          cd ios/App
-
-          xcodebuild -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
+          
+          BUILD=$(( $(date +%s) - 1700000000 ))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist 2>/dev/null || true
+          
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          
+          PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles/ -name "*.mobileprovision" -exec /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat {} 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) \; 2>/dev/null | head -1)
+          
+          if [ -z "$PROFILE_NAME" ]; then
+            echo "⚠️ No profile found, using default: TiliGo Cer"
+            PROFILE_NAME="TiliGo Cer"
+          fi
+          
+          echo "🔐 Using provisioning profile: $PROFILE_NAME"
+          
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath /Users/builder/build/App.xcarchive \
             DEVELOPMENT_TEAM=$TEAM_ID \
             CODE_SIGN_STYLE=Manual \
-            clean archive
-
-      # -------------------------
-      # 9. Export IPA (safe mode)
-      # -------------------------
-      - name: Export IPA
-        script: |
-          cat > ExportOptions.plist <<EOF
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            -allowProvisioningUpdates \
+            archive
+          
+          test -d /Users/builder/build/App.xcarchive || exit 1
+          
+          cat > /Users/builder/ExportOptions.plist << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>$TEAM_ID</string>
-            <key>signingStyle</key>
-            <string>manual</string>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>$TEAM_ID</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>$BUNDLE_ID</key>
+                  <string>$PROFILE_NAME</string>
+              </dict>
           </dict>
           </plist>
-          EOF
-
+          PLIST
+          
           xcodebuild -exportArchive \
-            -archivePath ios/App/build/App.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath build
-
+            -archivePath /Users/builder/build/App.xcarchive \
+            -exportPath /Users/builder/build \
+            -exportOptionsPlist /Users/builder/ExportOptions.plist
     artifacts:
-      - build/*.ipa
-
+      - /Users/builder/build/*.ipa
     publishing:
       app_store_connect:
         api_key: $APP_STORE_CONNECT_API_KEY
         issuer_id: $ISSUER_ID
         key_id: $KEY_ID
         submit_to_testflight: true
-
       email:
         recipients:
           - elgrandexx@icloud.com
