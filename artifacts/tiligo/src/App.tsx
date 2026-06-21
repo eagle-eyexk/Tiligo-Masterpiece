@@ -14,6 +14,11 @@ import TrackOrderPage from "@/pages/track";
 import MyOrdersPage from "@/pages/orders";
 import DownloadAppPage from "@/pages/download";
 
+// Customer Auth
+import CustomerLogin from "@/pages/customer/login";
+import CustomerRegister from "@/pages/customer/register";
+import CustomerDashboard from "@/pages/customer/dashboard";
+
 // Business Portal
 import BusinessLogin from "@/pages/business/login";
 import BusinessRegister from "@/pages/business/register";
@@ -40,6 +45,11 @@ function Router() {
       <Route path="/gjurmo/:code" component={TrackOrderPage} />
       <Route path="/porositjet-e-mia" component={MyOrdersPage} />
       <Route path="/shkarko-app" component={DownloadAppPage} />
+
+      {/* Customer Auth */}
+      <Route path="/kycu" component={CustomerLogin} />
+      <Route path="/regjistrohu" component={CustomerRegister} />
+      <Route path="/profili" component={CustomerDashboard} />
 
       {/* Business Routes */}
       <Route path="/biznesi/login" component={BusinessLogin} />

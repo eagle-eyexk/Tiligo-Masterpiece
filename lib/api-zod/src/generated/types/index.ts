@@ -38,3 +38,6 @@ export * from './productUpdate';
 export * from './supportTicket';
 export * from './supportTicketInput';
 export * from './supportTicketUpdate';
+export * from './customer';
+export * from './customerInput';
+export * from './customerUpdate';

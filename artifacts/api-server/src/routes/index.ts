@@ -9,6 +9,7 @@ import couponsRouter from "./coupons";
 import settingsRouter from "./settings";
 import ticketsRouter from "./tickets";
 import dashboardRouter from "./dashboard";
+import customersRouter from "./customers";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(couponsRouter);
 router.use(settingsRouter);
 router.use(ticketsRouter);
 router.use(dashboardRouter);
+router.use(customersRouter);
 
 export default router;
