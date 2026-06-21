@@ -22,11 +22,12 @@ workflows:
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install dependencies (yarn)
+      - name: 📦 Install dependencies (yarn with focus)
         script: |
-          # Use yarn with --ignore-workspace to avoid the global package.json
+          # Show yarn version
           yarn --version
-          yarn install --frozen-lockfile --ignore-workspace
+          # Install using yarn with immutable flag (newer yarn syntax)
+          yarn install --immutable
       
       - name: 🏗️ Build web app
         script: |
