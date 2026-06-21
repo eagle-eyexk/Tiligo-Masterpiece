@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TiliGo Delivery Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: businesses
+  - name: products
+  - name: offers
+  - name: orders
+  - name: deliveries
+  - name: coupons
+  - name: settings
+  - name: tickets
+  - name: dashboard
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,680 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── BUSINESSES ────────────────────────────────────────────────────
+  /businesses:
+    get:
+      operationId: listBusinesses
+      tags: [businesses]
+      summary: List all approved businesses
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Business"
+    post:
+      operationId: createBusiness
+      tags: [businesses]
+      summary: Register a new business
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  /businesses/{id}:
+    get:
+      operationId: getBusiness
+      tags: [businesses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    patch:
+      operationId: updateBusiness
+      tags: [businesses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    delete:
+      operationId: deleteBusiness
+      tags: [businesses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /businesses/login:
+    post:
+      operationId: loginBusiness
+      tags: [businesses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  # ─── PRODUCTS ──────────────────────────────────────────────────────
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      parameters:
+        - in: query
+          name: business_id
+          schema:
+            type: integer
+        - in: query
+          name: is_available
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── OFFERS ────────────────────────────────────────────────────────
+  /offers:
+    get:
+      operationId: listOffers
+      tags: [offers]
+      parameters:
+        - in: query
+          name: business_id
+          schema:
+            type: integer
+        - in: query
+          name: is_active
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+    post:
+      operationId: createOffer
+      tags: [offers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  /offers/{id}:
+    patch:
+      operationId: updateOffer
+      tags: [offers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+    delete:
+      operationId: deleteOffer
+      tags: [offers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── ORDERS ────────────────────────────────────────────────────────
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      parameters:
+        - in: query
+          name: business_id
+          schema:
+            type: integer
+        - in: query
+          name: delivery_id
+          schema:
+            type: integer
+        - in: query
+          name: customer_phone
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    delete:
+      operationId: deleteOrder
+      tags: [orders]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /orders/track/{code}:
+    get:
+      operationId: trackOrder
+      tags: [orders]
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  # ─── DELIVERIES ────────────────────────────────────────────────────
+  /deliveries:
+    get:
+      operationId: listDeliveries
+      tags: [deliveries]
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: is_available
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Delivery"
+    post:
+      operationId: createDelivery
+      tags: [deliveries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+
+  /deliveries/{id}:
+    patch:
+      operationId: updateDelivery
+      tags: [deliveries]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+    delete:
+      operationId: deleteDelivery
+      tags: [deliveries]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /deliveries/login:
+    post:
+      operationId: loginDelivery
+      tags: [deliveries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+
+  # ─── COUPONS ───────────────────────────────────────────────────────
+  /coupons:
+    get:
+      operationId: listCoupons
+      tags: [coupons]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Coupon"
+    post:
+      operationId: createCoupon
+      tags: [coupons]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CouponInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  /coupons/{id}:
+    patch:
+      operationId: updateCoupon
+      tags: [coupons]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CouponUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+    delete:
+      operationId: deleteCoupon
+      tags: [coupons]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /coupons/validate/{code}:
+    get:
+      operationId: validateCoupon
+      tags: [coupons]
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  # ─── APP SETTINGS ──────────────────────────────────────────────────
+  /settings:
+    get:
+      operationId: listSettings
+      tags: [settings]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppSetting"
+    post:
+      operationId: upsertSetting
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettingInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSetting"
+
+  # ─── SUPPORT TICKETS ───────────────────────────────────────────────
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicket"
+    post:
+      operationId: createTicket
+      tags: [tickets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+
+  /tickets/{id}:
+    patch:
+      operationId: updateTicket
+      tags: [tickets]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicket"
+    delete:
+      operationId: deleteTicket
+      tags: [tickets]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── DASHBOARD ─────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Admin dashboard KPI summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +712,350 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    # ── Business ─────────────────────────────────────────────────────
+    Business:
+      type: object
+      properties:
+        id:           { type: integer }
+        name:         { type: string }
+        description:  { type: ["string", "null"] }
+        category:     { type: ["string", "null"] }
+        image_url:    { type: ["string", "null"] }
+        address:      { type: ["string", "null"] }
+        phone:        { type: ["string", "null"] }
+        is_open:      { type: boolean }
+        delivery_fee: { type: ["number", "null"] }
+        delivery_time: { type: ["string", "null"] }
+        rating:       { type: ["number", "null"] }
+        status:       { type: string }
+        created_at:   { type: string }
+      required: [id, name, is_open, status]
+
+    BusinessInput:
+      type: object
+      properties:
+        name:         { type: string }
+        description:  { type: string }
+        category:     { type: string }
+        image_url:    { type: string }
+        address:      { type: string }
+        phone:        { type: string }
+        password:     { type: string }
+        delivery_fee: { type: number }
+        delivery_time: { type: string }
+      required: [name, phone, password]
+
+    BusinessUpdate:
+      type: object
+      properties:
+        name:         { type: string }
+        description:  { type: string }
+        category:     { type: string }
+        image_url:    { type: string }
+        address:      { type: string }
+        phone:        { type: string }
+        is_open:      { type: boolean }
+        delivery_fee: { type: number }
+        delivery_time: { type: string }
+        rating:       { type: number }
+        status:       { type: string }
+
+    LoginInput:
+      type: object
+      properties:
+        phone:    { type: string }
+        password: { type: string }
+      required: [phone, password]
+
+    # ── Product ───────────────────────────────────────────────────────
+    Product:
+      type: object
+      properties:
+        id:           { type: integer }
+        business_id:  { type: integer }
+        business_name: { type: ["string", "null"] }
+        name:         { type: string }
+        description:  { type: ["string", "null"] }
+        price:        { type: number }
+        category:     { type: ["string", "null"] }
+        image_url:    { type: ["string", "null"] }
+        is_available: { type: boolean }
+        created_at:   { type: string }
+      required: [id, business_id, name, price, is_available]
+
+    ProductInput:
+      type: object
+      properties:
+        business_id:  { type: integer }
+        business_name: { type: string }
+        name:         { type: string }
+        description:  { type: string }
+        price:        { type: number }
+        category:     { type: string }
+        image_url:    { type: string }
+        is_available: { type: boolean }
+      required: [business_id, name, price]
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:         { type: string }
+        description:  { type: string }
+        price:        { type: number }
+        category:     { type: string }
+        image_url:    { type: string }
+        is_available: { type: boolean }
+
+    # ── Offer ─────────────────────────────────────────────────────────
+    Offer:
+      type: object
+      properties:
+        id:             { type: integer }
+        business_id:    { type: integer }
+        business_name:  { type: ["string", "null"] }
+        title:          { type: string }
+        description:    { type: ["string", "null"] }
+        original_price: { type: ["number", "null"] }
+        offer_price:    { type: number }
+        image_url:      { type: ["string", "null"] }
+        items_included: { type: array, items: { type: string } }
+        badge:          { type: ["string", "null"] }
+        valid_until:    { type: ["string", "null"] }
+        is_active:      { type: boolean }
+        created_at:     { type: string }
+      required: [id, business_id, title, offer_price, is_active]
+
+    OfferInput:
+      type: object
+      properties:
+        business_id:    { type: integer }
+        business_name:  { type: string }
+        title:          { type: string }
+        description:    { type: string }
+        original_price: { type: number }
+        offer_price:    { type: number }
+        image_url:      { type: string }
+        items_included: { type: array, items: { type: string } }
+        badge:          { type: string }
+        valid_until:    { type: string }
+        is_active:      { type: boolean }
+      required: [business_id, title, offer_price]
+
+    OfferUpdate:
+      type: object
+      properties:
+        title:          { type: string }
+        description:    { type: string }
+        original_price: { type: number }
+        offer_price:    { type: number }
+        image_url:      { type: string }
+        items_included: { type: array, items: { type: string } }
+        badge:          { type: string }
+        valid_until:    { type: string }
+        is_active:      { type: boolean }
+
+    # ── Order ─────────────────────────────────────────────────────────
+    OrderItem:
+      type: object
+      properties:
+        id:    { type: ["integer", "null"] }
+        name:  { type: string }
+        price: { type: number }
+        qty:   { type: integer }
+      required: [name, price, qty]
+
+    Order:
+      type: object
+      properties:
+        id:               { type: integer }
+        order_code:       { type: string }
+        business_id:      { type: integer }
+        business_name:    { type: string }
+        customer_name:    { type: string }
+        customer_phone:   { type: string }
+        customer_address: { type: string }
+        customer_lat:     { type: ["number", "null"] }
+        customer_lng:     { type: ["number", "null"] }
+        notes:            { type: ["string", "null"] }
+        items:            { type: array, items: { $ref: "#/components/schemas/OrderItem" } }
+        total:            { type: number }
+        delivery_fee:     { type: number }
+        status:           { type: string }
+        payment_method:   { type: string }
+        priority:         { type: boolean }
+        coupon_code:      { type: ["string", "null"] }
+        discount:         { type: ["number", "null"] }
+        delivery_id:      { type: ["integer", "null"] }
+        delivery_name:    { type: ["string", "null"] }
+        delivery_lat:     { type: ["number", "null"] }
+        delivery_lng:     { type: ["number", "null"] }
+        created_at:       { type: string }
+      required: [id, order_code, business_id, business_name, customer_name, customer_phone, customer_address, total, delivery_fee, status]
+
+    OrderInput:
+      type: object
+      properties:
+        order_code:       { type: string }
+        business_id:      { type: integer }
+        business_name:    { type: string }
+        customer_name:    { type: string }
+        customer_phone:   { type: string }
+        customer_address: { type: string }
+        customer_lat:     { type: number }
+        customer_lng:     { type: number }
+        notes:            { type: string }
+        items:            { type: array, items: { $ref: "#/components/schemas/OrderItem" } }
+        total:            { type: number }
+        delivery_fee:     { type: number }
+        payment_method:   { type: string }
+        priority:         { type: boolean }
+        coupon_code:      { type: string }
+        discount:         { type: number }
+      required: [order_code, business_id, business_name, customer_name, customer_phone, customer_address, items, total, delivery_fee]
+
+    OrderUpdate:
+      type: object
+      properties:
+        status:       { type: string }
+        delivery_id:  { type: integer }
+        delivery_name: { type: string }
+        delivery_lat: { type: number }
+        delivery_lng: { type: number }
+
+    # ── Delivery ──────────────────────────────────────────────────────
+    Delivery:
+      type: object
+      properties:
+        id:           { type: integer }
+        name:         { type: string }
+        phone:        { type: string }
+        vehicle:      { type: string }
+        image_url:    { type: ["string", "null"] }
+        status:       { type: string }
+        is_available: { type: boolean }
+        created_at:   { type: string }
+      required: [id, name, phone, vehicle, status, is_available]
+
+    DeliveryInput:
+      type: object
+      properties:
+        name:     { type: string }
+        phone:    { type: string }
+        vehicle:  { type: string }
+        image_url: { type: string }
+        password: { type: string }
+      required: [name, phone, vehicle, password]
+
+    DeliveryUpdate:
+      type: object
+      properties:
+        name:         { type: string }
+        phone:        { type: string }
+        vehicle:      { type: string }
+        image_url:    { type: string }
+        status:       { type: string }
+        is_available: { type: boolean }
+
+    # ── Coupon ────────────────────────────────────────────────────────
+    Coupon:
+      type: object
+      properties:
+        id:              { type: integer }
+        code:            { type: string }
+        description:     { type: ["string", "null"] }
+        discount_amount: { type: number }
+        uses_left:       { type: integer }
+        is_active:       { type: boolean }
+        created_at:      { type: string }
+      required: [id, code, discount_amount, uses_left, is_active]
+
+    CouponInput:
+      type: object
+      properties:
+        code:            { type: string }
+        description:     { type: string }
+        discount_amount: { type: number }
+        uses_left:       { type: integer }
+        is_active:       { type: boolean }
+      required: [code, discount_amount]
+
+    CouponUpdate:
+      type: object
+      properties:
+        code:            { type: string }
+        description:     { type: string }
+        discount_amount: { type: number }
+        uses_left:       { type: integer }
+        is_active:       { type: boolean }
+
+    # ── AppSetting ────────────────────────────────────────────────────
+    AppSetting:
+      type: object
+      properties:
+        id:    { type: integer }
+        key:   { type: string }
+        value: { type: string }
+        label: { type: ["string", "null"] }
+      required: [id, key, value]
+
+    AppSettingInput:
+      type: object
+      properties:
+        key:   { type: string }
+        value: { type: string }
+        label: { type: string }
+      required: [key, value]
+
+    # ── SupportTicket ─────────────────────────────────────────────────
+    SupportTicket:
+      type: object
+      properties:
+        id:         { type: integer }
+        name:       { type: string }
+        email:      { type: string }
+        phone:      { type: ["string", "null"] }
+        subject:    { type: string }
+        message:    { type: string }
+        category:   { type: ["string", "null"] }
+        priority:   { type: string }
+        status:     { type: string }
+        created_at: { type: string }
+      required: [id, name, email, subject, message, priority, status]
+
+    SupportTicketInput:
+      type: object
+      properties:
+        name:     { type: string }
+        email:    { type: string }
+        phone:    { type: string }
+        subject:  { type: string }
+        message:  { type: string }
+        category: { type: string }
+        priority: { type: string }
+      required: [name, email, subject, message]
+
+    SupportTicketUpdate:
+      type: object
+      properties:
+        status:   { type: string }
+        priority: { type: string }
+
+    # ── Dashboard ─────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      properties:
+        total_businesses:    { type: integer }
+        active_businesses:   { type: integer }
+        pending_businesses:  { type: integer }
+        total_couriers:      { type: integer }
+        approved_couriers:   { type: integer }
+        pending_couriers:    { type: integer }
+        total_orders:        { type: integer }
+        active_orders:       { type: integer }
+        delivered_orders:    { type: integer }
+        today_revenue:       { type: number }
+        total_revenue:       { type: number }
+        open_tickets:        { type: integer }
+      required: [total_businesses, active_businesses, pending_businesses, total_couriers, approved_couriers, pending_couriers, total_orders, active_orders, delivered_orders, today_revenue, total_revenue, open_tickets]

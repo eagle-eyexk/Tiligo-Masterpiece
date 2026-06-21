@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "TiliGo — Delivery Platform"
+version = "1.0.0"
+id = "artifacts/tiligo"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23655
+
+[services.development]
+run = "pnpm --filter @workspace/tiligo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tiligo", "run", "build" ]
+publicDir = "artifacts/tiligo/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23655"
+BASE_PATH = "/"
