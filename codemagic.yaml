@@ -22,28 +22,24 @@ workflows:
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install pnpm
-        script: |
-          # Install pnpm globally
-          npm install -g pnpm
-          # Verify pnpm is installed
-          pnpm --version
-      
       - name: 📦 Install dependencies (pnpm)
         script: |
-          # Install dependencies using pnpm
-          pnpm install --frozen-lockfile
+          # Use the existing pnpm installation
+          which pnpm || echo "pnpm not found"
+          pnpm --version || echo "pnpm version check failed"
+          # Install dependencies
+          pnpm install --frozen-lockfile || pnpm install
       
       - name: 🏗️ Build web app
         script: |
-          # Build the project using pnpm
-          pnpm run build
+          # Build the project
+          pnpm run build || npm run build
       
       - name: 🎨 Generate app icons (optional)
         script: |
           if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
             echo "🎨 Generating iOS app icons..."
-            pnpm add -D @capacitor/assets
+            pnpm add -D @capacitor/assets || npm install -D @capacitor/assets
             npx capacitor-assets generate --ios
           else
             echo "ℹ️ No resources/icon.png found, using default icons"
