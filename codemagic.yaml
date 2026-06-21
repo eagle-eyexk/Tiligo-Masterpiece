@@ -10,11 +10,11 @@ workflows:
       groups:
         - code-signing
       vars:
-        BUNDLE_ID: "com.tiligo.tilgo"  # Using the bundle ID from your previous project
+        BUNDLE_ID: "com.tiligo.tilgo"
         TEAM_ID: "H4QUDPK7S3"
         ISSUER_ID: "6d7acece-2356-43c3-9946-6fd2cda5bf7d"
         KEY_ID: "3FM3UY4ARQ"
-        PROFILE_NAME: "TiliGo Cer"  # Using the profile name from your earlier template
+        PROFILE_NAME: "TiliGo Cer"
         KEYCHAIN_PASSWORD: "build123"
     triggering:
       events:
@@ -22,17 +22,17 @@ workflows:
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install dependencies (pnpm)
+      - name: 📦 Install dependencies
         script: |
-          # Install pnpm globally if not available
+          # Install pnpm globally
           npm install -g pnpm
-          # Install all dependencies
+          # Install dependencies using pnpm
           pnpm install --frozen-lockfile
       
       - name: 🏗️ Build web app
         script: |
-          # Build the TypeScript project
-          pnpm run build
+          # Build the project - check package.json for the actual build script
+          pnpm run build || npm run build
       
       - name: 🎨 Generate app icons (optional)
         script: |
@@ -128,7 +128,8 @@ workflows:
           PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles/ -name "*.mobileprovision" -exec /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat {} 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) \; 2>/dev/null | head -1)
           
           if [ -z "$PROFILE_NAME" ]; then
-            echo "⚠️ No profile found, using default: $PROFILE_NAME"
+            echo "⚠️ No profile found, using default: TiliGo Cer"
+            PROFILE_NAME="TiliGo Cer"
           fi
           
           echo "🔐 Using provisioning profile: $PROFILE_NAME"
