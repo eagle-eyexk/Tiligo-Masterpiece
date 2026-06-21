@@ -9,6 +9,8 @@ workflows:
       cocoapods: default
       groups:
         - code-signing
+      integrations:
+        app_store_connect: pellazgo_asc  # Your App Store Connect API key name
       vars:
         BUNDLE_ID: "com.tiligo.tilgo"
         TEAM_ID: "H4QUDPK7S3"
