@@ -98,29 +98,33 @@ workflows:
           
           echo "✅ Podfile created with iOS 14.0 deployment target"
       
-      - name: 🔄 Manually add iOS platform
+      - name: 🔄 Add iOS platform
         script: |
-          echo "📱 Manually adding Capacitor iOS platform..."
+          echo "📱 Adding Capacitor iOS platform..."
+          npx cap add ios
+      
+      - name: 🔧 Fix deployment target
+        script: |
+          echo "🔧 Fixing deployment target to iOS 14.0..."
           
-          # Run cap add with no sync to avoid automatic pod install
-          npx cap add ios --no-sync || echo "iOS add completed with warnings"
-          
-          # Fix the project deployment target
           cd ios/App
+          
+          # Update project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
           sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
           
-          # Ensure the project file exists
-          ls -la App.xcodeproj/ || echo "Project file check"
+          # Also update any other deployment target references
+          find . -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' {} \; 2>/dev/null || \
+          find . -name "*.pbxproj" -exec sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' {} \; 2>/dev/null || true
           
           cd ../..
           
-          echo "✅ iOS platform added with fixed deployment target"
+          echo "✅ Deployment target fixed to iOS 14.0"
       
       - name: 🔄 Sync Capacitor
         script: |
-          echo "🔄 Syncing Capacitor (without pod install)..."
-          npx cap sync ios --no-build
+          echo "🔄 Syncing Capacitor..."
+          npx cap sync ios
       
       - name: 📦 Install CocoaPods dependencies
         script: |
