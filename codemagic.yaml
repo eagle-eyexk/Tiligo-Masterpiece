@@ -36,7 +36,6 @@ workflows:
           echo "📁 Creating minimal web build in dist/ folder..."
           mkdir -p dist
           
-          # Create a proper index.html with React root
           cat > dist/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -48,7 +47,6 @@ workflows:
             <body>
               <div id="root"></div>
               <script>
-                // Simple React-like render
                 document.getElementById('root').innerHTML = 
                   '<h1>Tiligo</h1><p>Loading...</p>';
               </script>
@@ -57,7 +55,6 @@ workflows:
           EOF
           
           echo "✅ index.html created in dist/"
-          cat dist/index.html
       
       - name: 📝 Create Capacitor config
         script: |
@@ -70,28 +67,33 @@ workflows:
             "bundledWebRuntime": false
           }
           EOF
-          echo "✅ capacitor.config.json created"
       
-      - name: 🎨 Generate app icons (optional)
-        script: |
-          if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
-            echo "🎨 Generating iOS app icons..."
-            npx capacitor-assets generate --ios
-          else
-            echo "ℹ️ No resources/icon.png found, using default icons"
-          fi
-      
-      - name: 🔄 Add iOS platform and sync
+      - name: 🔄 Add iOS platform
         script: |
           echo "📱 Adding Capacitor iOS platform..."
           npx cap add ios
+      
+      - name: 🔧 Fix iOS deployment target
+        script: |
+          echo "🔧 Fixing iOS deployment target to iOS 14.0..."
           
-          echo "🔧 Updating iOS deployment target..."
-          # Update minimum deployment target to iOS 13.0
+          # Fix Podfile deployment target
           cd ios/App
-          /usr/libexec/PlistBuddy -c "Set :IPHONEOS_DEPLOYMENT_TARGET 13.0" App.xcodeproj/project.pbxproj 2>/dev/null || true
+          
+          # Update Podfile platform
+          sed -i '' 's/platform :ios, .*/platform :ios, '"'"'14.0'"'"'/' Podfile 2>/dev/null || \
+          sed -i 's/platform :ios, .*/platform :ios, '\''14.0'\''/' Podfile 2>/dev/null || \
+          echo "platform :ios, '14.0'" >> Podfile
+          
+          # Update project deployment target
+          /usr/libexec/PlistBuddy -c "Set :IPHONEOS_DEPLOYMENT_TARGET 14.0" App.xcodeproj/project.pbxproj 2>/dev/null || true
+          
           cd ../..
           
+          echo "✅ Deployment target set to iOS 14.0"
+      
+      - name: 🔄 Sync Capacitor and install pods
+        script: |
           echo "🔄 Syncing Capacitor..."
           npx cap sync ios
           
