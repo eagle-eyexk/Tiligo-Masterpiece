@@ -68,16 +68,26 @@ workflows:
           }
           EOF
       
-      - name: 🔧 Pre-configure iOS deployment target
+      - name: 🔄 Re-add iOS platform (clean)
         script: |
-          echo "🔧 Creating iOS folder with correct deployment target..."
+          echo "📱 Removing existing iOS platform if it exists..."
+          if [ -d "ios" ]; then
+            echo "⚠️ ios folder exists, removing it..."
+            rm -rf ios
+            echo "✅ ios folder removed"
+          fi
           
-          # Create ios folder if it doesn't exist
-          mkdir -p ios
+          echo "📱 Adding Capacitor iOS platform..."
+          npx cap add ios
+      
+      - name: 🔧 Fix iOS deployment target
+        script: |
+          echo "🔧 Fixing iOS deployment target to iOS 14.0..."
           
-          # Create a temporary Podfile with correct deployment target
-          mkdir -p ios/App
-          cat > ios/App/Podfile << 'EOF'
+          cd ios/App
+          
+          # Update Podfile
+          cat > Podfile << 'EOF'
           platform :ios, '14.0'
           install! 'cocoapods', :deterministic_uuids => false
           
@@ -89,26 +99,13 @@ workflows:
           end
           EOF
           
-          echo "✅ Podfile created with iOS 14.0 deployment target"
-      
-      - name: 🔄 Add iOS platform
-        script: |
-          echo "📱 Adding Capacitor iOS platform..."
-          npx cap add ios
-      
-      - name: 🔧 Fix deployment target after add
-        script: |
-          echo "🔧 Ensuring deployment target is iOS 14.0..."
-          
-          cd ios/App
-          
-          # Update project.pbxproj
+          # Update project deployment target
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
           sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
           
           cd ../..
           
-          echo "✅ Deployment target fixed"
+          echo "✅ Deployment target fixed to iOS 14.0"
       
       - name: 🔄 Sync Capacitor and install pods
         script: |
