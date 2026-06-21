@@ -12,8 +12,6 @@ workflows:
       vars:
         BUNDLE_ID: "com.tiligo.tilgo"
         TEAM_ID: "H4QUDPK7S3"
-        ISSUER_ID: "6d7acece-2356-43c3-9946-6fd2cda5bf7d"
-        KEY_ID: "3FM3UY4ARQ"
         PROFILE_NAME: "TiliGo Cer"
         KEYCHAIN_PASSWORD: "build123"
     triggering:
@@ -72,16 +70,13 @@ workflows:
         script: |
           echo "🔧 Creating iOS folder with correct deployment target..."
           
-          # Remove existing ios folder if it exists
           if [ -d "ios" ]; then
             echo "⚠️ Removing existing ios folder..."
             rm -rf ios
           fi
           
-          # Create ios folder structure
           mkdir -p ios/App
           
-          # Create Podfile with correct deployment target and project path
           cat > ios/App/Podfile << 'EOF'
           platform :ios, '14.0'
           install! 'cocoapods', :deterministic_uuids => false
@@ -90,7 +85,6 @@ workflows:
           
           target 'App' do
             capacitor_pods = true
-            # Add your Pods here
             pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
             pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
           end
@@ -108,15 +102,8 @@ workflows:
           echo "🔧 Fixing deployment target to iOS 14.0..."
           
           cd ios/App
-          
-          # Update project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
           sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
-          
-          # Also update any other deployment target references
-          find . -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' {} \; 2>/dev/null || \
-          find . -name "*.pbxproj" -exec sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' {} \; 2>/dev/null || true
-          
           cd ../..
           
           echo "✅ Deployment target fixed to iOS 14.0"
@@ -129,15 +116,7 @@ workflows:
       - name: 📦 Install CocoaPods dependencies
         script: |
           echo "📦 Installing CocoaPods dependencies..."
-          cd ios/App
-          
-          # Verify Podfile exists
-          cat Podfile
-          
-          # Run pod install
-          pod install --repo-update
-          
-          cd ../..
+          cd ios/App && pod install --repo-update && cd ../..
       
       - name: 🔐 Install certificate from signing folder
         script: |
@@ -182,16 +161,6 @@ workflows:
           echo "✅ Profiles installed:"
           ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
       
-      - name: 🔍 Debug - List installed profiles
-        script: |
-          echo "📋 Installed provisioning profiles:"
-          for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
-            if [ -f "$profile" ]; then
-              echo "📂 $profile"
-              /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat "$profile" 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) 2>/dev/null || echo "  Could not read name"
-            fi
-          done
-      
       - name: 🚀 Build and export IPA
         script: |
           cd ios/App
@@ -201,15 +170,6 @@ workflows:
           
           security default-keychain -s build.keychain
           security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
-          
-          PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles/ -name "*.mobileprovision" -exec /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat {} 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) \; 2>/dev/null | head -1)
-          
-          if [ -z "$PROFILE_NAME" ]; then
-            echo "⚠️ No profile found, using default: TiliGo Cer"
-            PROFILE_NAME="TiliGo Cer"
-          fi
-          
-          echo "🔐 Using provisioning profile: $PROFILE_NAME"
           
           xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
             -archivePath /Users/builder/build/App.xcarchive \
@@ -247,9 +207,7 @@ workflows:
       - /Users/builder/build/*.ipa
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_API_KEY
-        issuer_id: $ISSUER_ID
-        key_id: $KEY_ID
+        auth: integration
         submit_to_testflight: true
       email:
         recipients:
