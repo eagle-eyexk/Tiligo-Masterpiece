@@ -68,29 +68,47 @@ workflows:
           }
           EOF
       
+      - name: 🔧 Pre-configure iOS deployment target
+        script: |
+          echo "🔧 Creating iOS folder with correct deployment target..."
+          
+          # Create ios folder if it doesn't exist
+          mkdir -p ios
+          
+          # Create a temporary Podfile with correct deployment target
+          mkdir -p ios/App
+          cat > ios/App/Podfile << 'EOF'
+          platform :ios, '14.0'
+          install! 'cocoapods', :deterministic_uuids => false
+          
+          target 'App' do
+            capacitor_pods = true
+            # Add your Pods here
+            pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+            pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+          end
+          EOF
+          
+          echo "✅ Podfile created with iOS 14.0 deployment target"
+      
       - name: 🔄 Add iOS platform
         script: |
           echo "📱 Adding Capacitor iOS platform..."
           npx cap add ios
       
-      - name: 🔧 Fix iOS deployment target
+      - name: 🔧 Fix deployment target after add
         script: |
-          echo "🔧 Fixing iOS deployment target to iOS 14.0..."
+          echo "🔧 Ensuring deployment target is iOS 14.0..."
           
-          # Fix Podfile deployment target
           cd ios/App
           
-          # Update Podfile platform
-          sed -i '' 's/platform :ios, .*/platform :ios, '"'"'14.0'"'"'/' Podfile 2>/dev/null || \
-          sed -i 's/platform :ios, .*/platform :ios, '\''14.0'\''/' Podfile 2>/dev/null || \
-          echo "platform :ios, '14.0'" >> Podfile
-          
-          # Update project deployment target
-          /usr/libexec/PlistBuddy -c "Set :IPHONEOS_DEPLOYMENT_TARGET 14.0" App.xcodeproj/project.pbxproj 2>/dev/null || true
+          # Update project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
+          sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
           
           cd ../..
           
-          echo "✅ Deployment target set to iOS 14.0"
+          echo "✅ Deployment target fixed"
       
       - name: 🔄 Sync Capacitor and install pods
         script: |
