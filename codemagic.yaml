@@ -3,14 +3,14 @@ workflows:
     name: iOS Release - Tiligo-Masterpiece
     instance_type: mac_mini_m1
     max_build_duration: 120
+    integrations:
+      app_store_connect: tiligo_asc  # Your App Store Connect API key name
     environment:
       node: 20
       xcode: latest
       cocoapods: default
       groups:
         - code-signing
-      integrations:
-        app_store_connect: pellazgo_asc  # Your App Store Connect API key name
       vars:
         BUNDLE_ID: "com.tiligo.tilgo"
         TEAM_ID: "H4QUDPK7S3"
