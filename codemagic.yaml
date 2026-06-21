@@ -1,0 +1,183 @@
+workflows:
+  ios-release:
+    name: iOS Release - Tiligo-Masterpiece
+    instance_type: mac_mini_m1
+    max_build_duration: 120
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      groups:
+        - code-signing
+      vars:
+        BUNDLE_ID: "com.tiligo.tilgo"  # Using the bundle ID from your previous project
+        TEAM_ID: "H4QUDPK7S3"
+        ISSUER_ID: "6d7acece-2356-43c3-9946-6fd2cda5bf7d"
+        KEY_ID: "3FM3UY4ARQ"
+        PROFILE_NAME: "TiliGo Cer"  # Using the profile name from your earlier template
+        KEYCHAIN_PASSWORD: "build123"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+    scripts:
+      - name: 📦 Install dependencies (pnpm)
+        script: |
+          # Install pnpm globally if not available
+          npm install -g pnpm
+          # Install all dependencies
+          pnpm install --frozen-lockfile
+      
+      - name: 🏗️ Build web app
+        script: |
+          # Build the TypeScript project
+          pnpm run build
+      
+      - name: 🎨 Generate app icons (optional)
+        script: |
+          if [ -d "resources" ] && [ -f "resources/icon.png" ]; then
+            echo "🎨 Generating iOS app icons..."
+            npm install -D @capacitor/assets
+            npx capacitor-assets generate --ios
+          else
+            echo "ℹ️ No resources/icon.png found, using default icons"
+          fi
+      
+      - name: 🔄 Sync Capacitor and pods
+        script: |
+          # Check if Capacitor iOS exists, add if not
+          if [ ! -d "ios" ]; then
+            echo "📱 Adding Capacitor iOS platform..."
+            npx cap add ios
+          fi
+          # Sync and install pods
+          npx cap sync ios
+          cd ios/App && pod install --repo-update && cd ../..
+      
+      - name: 🔐 Install certificate from signing folder
+        script: |
+          echo "🔐 Installing certificates from signing/ folder..."
+          
+          # Create keychain
+          security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          
+          # Import all p12 files
+          for p12 in signing/*.p12; do
+            if [ -f "$p12" ]; then
+              echo "📂 Importing: $p12"
+              security import "$p12" -k build.keychain -P "" -T /usr/bin/codesign
+            fi
+          done
+          
+          # Import all pem files
+          for pem in signing/*.pem; do
+            if [ -f "$pem" ]; then
+              echo "📂 Importing: $pem"
+              security import "$pem" -k build.keychain -T /usr/bin/codesign
+            fi
+          done
+          
+          security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASSWORD build.keychain
+          
+          echo "✅ Certificates installed successfully"
+          security find-identity -v -p apple
+      
+      - name: 📋 Install provisioning profile
+        script: |
+          echo "📋 Installing provisioning profiles from signing/ folder..."
+          
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
+          
+          # Copy all mobileprovision files
+          for profile in signing/*.mobileprovision; do
+            if [ -f "$profile" ]; then
+              echo "📂 Installing: $profile"
+              cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/
+            fi
+          done
+          
+          echo "✅ Profiles installed:"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+      
+      - name: 🔍 Debug - List installed profiles
+        script: |
+          echo "📋 Installed provisioning profiles:"
+          for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
+            if [ -f "$profile" ]; then
+              echo "📂 $profile"
+              /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat "$profile" 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) 2>/dev/null || echo "  Could not read name"
+            fi
+          done
+      
+      - name: 🚀 Build and export IPA
+        script: |
+          cd ios/App
+          
+          # Auto-increment build number
+          BUILD=$(( $(date +%s) - 1700000000 ))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist 2>/dev/null || true
+          
+          # Use keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          
+          # Find the actual profile name from the installed profiles
+          PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles/ -name "*.mobileprovision" -exec /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< $(cat {} 2>/dev/null | openssl smime -inform der -verify -noverify 2>/dev/null) \; 2>/dev/null | head -1)
+          
+          if [ -z "$PROFILE_NAME" ]; then
+            echo "⚠️ No profile found, using default: $PROFILE_NAME"
+          fi
+          
+          echo "🔐 Using provisioning profile: $PROFILE_NAME"
+          
+          # Build archive with manual signing
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath /Users/builder/build/App.xcarchive \
+            DEVELOPMENT_TEAM=$TEAM_ID \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            -allowProvisioningUpdates \
+            archive
+          
+          test -d /Users/builder/build/App.xcarchive || exit 1
+          
+          # Export IPA
+          cat > /Users/builder/ExportOptions.plist << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>$TEAM_ID</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>$BUNDLE_ID</key>
+                  <string>$PROFILE_NAME</string>
+              </dict>
+          </dict>
+          </plist>
+          PLIST
+          
+          xcodebuild -exportArchive \
+            -archivePath /Users/builder/build/App.xcarchive \
+            -exportPath /Users/builder/build \
+            -exportOptionsPlist /Users/builder/ExportOptions.plist
+    artifacts:
+      - /Users/builder/build/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_API_KEY
+        issuer_id: $ISSUER_ID
+        key_id: $KEY_ID
+        submit_to_testflight: true
+      email:
+        recipients:
+          - elgrandexx@icloud.com
+        notify:
+          success: true
+          failure: true
