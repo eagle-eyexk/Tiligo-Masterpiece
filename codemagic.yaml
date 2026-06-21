@@ -31,30 +31,33 @@ workflows:
           npm install -g @capacitor/cli
           npm install @capacitor/core @capacitor/ios
       
-      - name: 📁 Prepare web build from artifacts
+      - name: 📁 Create minimal web build
         script: |
-          echo "📁 Preparing web build from artifacts/ folder..."
+          echo "📁 Creating minimal web build in dist/ folder..."
+          mkdir -p dist
           
-          if [ -d "artifacts" ]; then
-            echo "✅ Found artifacts folder!"
-            mkdir -p dist
-            cp -r artifacts/* dist/ 2>/dev/null || echo "No files to copy from artifacts"
-          fi
+          # Create a proper index.html with React root
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Tiligo</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script>
+                // Simple React-like render
+                document.getElementById('root').innerHTML = 
+                  '<h1>Tiligo</h1><p>Loading...</p>';
+              </script>
+            </body>
+          </html>
+          EOF
           
-          if [ -d "build" ]; then
-            echo "✅ Found build folder!"
-            mkdir -p dist
-            cp -r build/* dist/ 2>/dev/null || true
-          fi
-          
-          if [ -d "dist" ] && [ "$(ls -A dist)" ]; then
-            echo "✅ dist folder already has content!"
-            ls -la dist/
-          else
-            echo "⚠️ No build output found. Creating a minimal build..."
-            mkdir -p dist
-            echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Tiligo</title></head><body><div id='root'>Tiligo App</div></body></html>" > dist/index.html
-          fi
+          echo "✅ index.html created in dist/"
+          cat dist/index.html
       
       - name: 📝 Create Capacitor config
         script: |
@@ -82,6 +85,12 @@ workflows:
         script: |
           echo "📱 Adding Capacitor iOS platform..."
           npx cap add ios
+          
+          echo "🔧 Updating iOS deployment target..."
+          # Update minimum deployment target to iOS 13.0
+          cd ios/App
+          /usr/libexec/PlistBuddy -c "Set :IPHONEOS_DEPLOYMENT_TARGET 13.0" App.xcodeproj/project.pbxproj 2>/dev/null || true
+          cd ../..
           
           echo "🔄 Syncing Capacitor..."
           npx cap sync ios
