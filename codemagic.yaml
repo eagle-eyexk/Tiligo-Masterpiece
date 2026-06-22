@@ -1,71 +1,28 @@
-workflows:
-  ios-release:
-    name: iOS Release
-    instance_type: mac_mini_m1
-    max_build_duration: 120
-    integrations:
-      app_store_connect: tiligo_asc
-    environment:
-      node: 22
-      xcode: latest
-      cocoapods: default
-      groups:
-        - code-signing
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-    scripts:
-      - name: Install dependencies
-        script: npm install
-      - name: Build web app
-        script: npm run build
-      - name: Setup iOS project
-        script: |
-          rm -rf ios
-          npx cap add ios
-          npx cap sync ios
-          cd ios/App && pod install --repo-update && cd ../..
-      - name: Install signing assets
-        script: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp signing/*.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
-          security create-keychain -p build123 build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p build123 build.keychain
-          for p12 in signing/*.p12; do
-            security import "$p12" -k build.keychain -P "DqUvrZUt" -T /usr/bin/codesign
-          done
-          security set-key-partition-list -S apple-tool:,apple: -s -k build123 build.keychain
-      - name: Archive and export
-        script: |
-          cd ios/App
-          BUILD=$(( $(date +%s) - 1700000000 ))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist 2>/dev/null || true
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath /Users/builder/build/App.xcarchive DEVELOPMENT_TEAM=H4QUDPK7S3 CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="TiliGo Cer" archive
-          test -d /Users/builder/build/App.xcarchive || exit 1
-          cat > /Users/builder/ExportOptions.plist << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>H4QUDPK7S3</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>com.tiligo.tilgo</key>
-                  <string>TiliGo Cer</string>
-              </dict>
-          </dict>
-          </plist>
-          PLIST
-          xcodebuild -exportArchive -archivePath /Users/builder/build/App.xcarchive -exportPath /Users/builder/build -exportOptionsPlist /Users/builder/ExportOptions.plist
-    artifacts:
-      - /Users/builder/build/*.ipa
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
+
+> workspace@0.0.0 preinstall
+> sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+Use pnpm instead
+npm error code 1
+npm error path /Users/builder/clone
+npm error command failed
+npm error command sh -c sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+npm error A complete log of this run can be found in: /Users/builder/.npm/_logs/2026-06-22T10_39_18_256Z-debug-0.log
+
+
+Build failed :|
+Step 2 script `Install dependencies` exited with status code 1
+
+> workspace@0.0.0 preinstall
+> sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+Use pnpm instead
+npm error code 1
+npm error path /Users/builder/clone
+npm error command failed
+npm error command sh -c sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+npm error A complete log of this run can be found in: /Users/builder/.npm/_logs/2026-06-22T10_39_18_256Z-debug-0.log
+
+
+Build failed :|
+Step 2 script `Install dependencies` exited with status code 1
