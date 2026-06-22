@@ -1,189 +1,51 @@
 workflows:
   ios-release:
-    name: iOS Release - Tiligo-Masterpiece
+    name: iOS Release
     instance_type: mac_mini_m1
     max_build_duration: 120
     integrations:
-      app_store_connect: tiligo_asc  # Your App Store Connect API key name
+      app_store_connect: tiligo_asc
     environment:
-      node: 20
+      node: 22
       xcode: latest
       cocoapods: default
       groups:
         - code-signing
-      vars:
-        BUNDLE_ID: "com.tiligo.tilgo"
-        TEAM_ID: "H4QUDPK7S3"
-        PROFILE_NAME: "TiliGo Cer"
-        KEYCHAIN_PASSWORD: "build123"
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: main
     scripts:
-      - name: 📦 Install dependencies and Capacitor
+      - name: Install dependencies
+        script: npm install
+      - name: Build web app
+        script: npm run build
+      - name: Setup iOS project
         script: |
-          echo "📦 Installing essential dependencies..."
-          npm install --no-package-lock --omit=dev || echo "npm install failed, continuing..."
-          
-          echo "⚡ Installing Capacitor core and iOS..."
-          npm install -g @capacitor/cli
-          npm install @capacitor/core @capacitor/ios
-      
-      - name: 📁 Create minimal web build
-        script: |
-          echo "📁 Creating minimal web build in dist/ folder..."
-          mkdir -p dist
-          
-          cat > dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>Tiligo</title>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script>
-                document.getElementById('root').innerHTML = 
-                  '<h1>Tiligo</h1><p>Loading...</p>';
-              </script>
-            </body>
-          </html>
-          EOF
-          
-          echo "✅ index.html created in dist/"
-      
-      - name: 📝 Create Capacitor config
-        script: |
-          echo "⚙️ Creating capacitor.config.json..."
-          cat > capacitor.config.json << 'EOF'
-          {
-            "appId": "com.tiligo.tilgo",
-            "appName": "Tiligo",
-            "webDir": "dist",
-            "bundledWebRuntime": false
-          }
-          EOF
-      
-      - name: 🔧 Create iOS folder with correct Podfile
-        script: |
-          echo "🔧 Creating iOS folder with correct deployment target..."
-          
-          if [ -d "ios" ]; then
-            echo "⚠️ Removing existing ios folder..."
-            rm -rf ios
-          fi
-          
-          mkdir -p ios/App
-          
-          cat > ios/App/Podfile << 'EOF'
-          platform :ios, '14.0'
-          install! 'cocoapods', :deterministic_uuids => false
-          
-          project 'App.xcodeproj'
-          
-          target 'App' do
-            capacitor_pods = true
-            pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
-            pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
-          end
-          EOF
-          
-          echo "✅ Podfile created with iOS 14.0 deployment target"
-      
-      - name: 🔄 Add iOS platform
-        script: |
-          echo "📱 Adding Capacitor iOS platform..."
+          rm -rf ios
           npx cap add ios
-      
-      - name: 🔧 Fix deployment target
-        script: |
-          echo "🔧 Fixing deployment target to iOS 14.0..."
-          
-          cd ios/App
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || \
-          sed -i 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' App.xcodeproj/project.pbxproj 2>/dev/null || true
-          cd ../..
-          
-          echo "✅ Deployment target fixed to iOS 14.0"
-      
-      - name: 🔄 Sync Capacitor
-        script: |
-          echo "🔄 Syncing Capacitor..."
           npx cap sync ios
-      
-      - name: 📦 Install CocoaPods dependencies
-        script: |
-          echo "📦 Installing CocoaPods dependencies..."
           cd ios/App && pod install --repo-update && cd ../..
-      
-      - name: 🔐 Install certificate from signing folder
+      - name: Install signing assets
         script: |
-          echo "🔐 Installing certificates from signing/ folder..."
-          
-          security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp signing/*.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          security create-keychain -p build123 build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
-          
+          security unlock-keychain -p build123 build.keychain
           for p12 in signing/*.p12; do
-            if [ -f "$p12" ]; then
-              echo "📂 Importing: $p12"
-              security import "$p12" -k build.keychain -P "" -T /usr/bin/codesign
-            fi
+            security import "$p12" -k build.keychain -P "DqUvrZUt" -T /usr/bin/codesign
           done
-          
-          for pem in signing/*.pem; do
-            if [ -f "$pem" ]; then
-              echo "📂 Importing: $pem"
-              security import "$pem" -k build.keychain -T /usr/bin/codesign
-            fi
-          done
-          
-          security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASSWORD build.keychain
-          
-          echo "✅ Certificates installed successfully"
-          security find-identity -v -p apple
-      
-      - name: 📋 Install provisioning profile
-        script: |
-          echo "📋 Installing provisioning profiles from signing/ folder..."
-          
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
-          
-          for profile in signing/*.mobileprovision; do
-            if [ -f "$profile" ]; then
-              echo "📂 Installing: $profile"
-              cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/
-            fi
-          done
-          
-          echo "✅ Profiles installed:"
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
-      
-      - name: 🚀 Build and export IPA
+          security set-key-partition-list -S apple-tool:,apple: -s -k build123 build.keychain
+      - name: Archive and export
         script: |
           cd ios/App
-          
           BUILD=$(( $(date +%s) - 1700000000 ))
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist 2>/dev/null || true
-          
-          security default-keychain -s build.keychain
-          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
-          
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
-            -archivePath /Users/builder/build/App.xcarchive \
-            DEVELOPMENT_TEAM=$TEAM_ID \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            -allowProvisioningUpdates \
-            archive
-          
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath /Users/builder/build/App.xcarchive DEVELOPMENT_TEAM=H4QUDPK7S3 CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="TiliGo Cer" archive
           test -d /Users/builder/build/App.xcarchive || exit 1
-          
-          cat > /Users/builder/ExportOptions.plist << PLIST
+          cat > /Users/builder/ExportOptions.plist << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -191,29 +53,19 @@ workflows:
               <key>method</key>
               <string>app-store</string>
               <key>teamID</key>
-              <string>$TEAM_ID</string>
+              <string>H4QUDPK7S3</string>
               <key>provisioningProfiles</key>
               <dict>
-                  <key>$BUNDLE_ID</key>
-                  <string>$PROFILE_NAME</string>
+                  <key>com.tiligo.tilgo</key>
+                  <string>TiliGo Cer</string>
               </dict>
           </dict>
           </plist>
           PLIST
-          
-          xcodebuild -exportArchive \
-            -archivePath /Users/builder/build/App.xcarchive \
-            -exportPath /Users/builder/build \
-            -exportOptionsPlist /Users/builder/ExportOptions.plist
+          xcodebuild -exportArchive -archivePath /Users/builder/build/App.xcarchive -exportPath /Users/builder/build -exportOptionsPlist /Users/builder/ExportOptions.plist
     artifacts:
       - /Users/builder/build/*.ipa
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-      email:
-        recipients:
-          - elgrandexx@icloud.com
-        notify:
-          success: true
-          failure: true
